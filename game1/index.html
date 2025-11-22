@@ -550,7 +550,7 @@
         constructor() {
           this.score = 0;
           this.targetScore = 10000;
-          this.time = 90;
+          this.time = 60;
           this.currentStation = 0;
           this.isPlaying = false;
           this.selectedIngredient = null;
@@ -697,9 +697,9 @@
           // However, if it's just 'preparing', we shouldn't be able to serve. Only once it starts 'cooking'.
           if (station.state === "cooking") {
             // Serve Undercooked
-            this.showFloatingText(`💰 +500원`, stationId, "#aaa");
+            this.showFloatingText(`💰 +300원`, stationId, "#aaa");
             this.showFeedback(stationId, "bad");
-            this.updateScore(500); // Fixed low price
+            this.updateScore(300); // Fixed low price
             this.resetStation(stationId);
             return;
           }
@@ -1035,3 +1035,4 @@
     </script>
   </body>
 </html>
+
