@@ -1,0 +1,1037 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+    <title>곱춘이의 포장마차 - 하드코어</title>
+    <style>
+      :root {
+        --pocha-red: #d93025;
+        --pocha-orange: #f29f05;
+        --pocha-wood: #5d4037;
+        --pocha-dark: #3e2723;
+        --ui-bg: rgba(0, 0, 0, 0.7);
+      }
+
+      * {
+        box-sizing: border-box;
+        user-select: none;
+        -webkit-user-select: none;
+        touch-action: manipulation;
+      }
+
+      body {
+        margin: 0;
+        padding: 0;
+        background-color: #222;
+        font-family: "Noto Sans KR", sans-serif;
+        overflow: hidden;
+        height: 100vh;
+        width: 100vw;
+        color: white;
+      }
+
+      /* UI Layer */
+      #ui-layer {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        z-index: 100;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+      }
+
+      .top-bar {
+        background: var(--pocha-red);
+        padding: 10px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        pointer-events: auto;
+      }
+
+      .stat-box {
+        background: rgba(0, 0, 0, 0.5);
+        padding: 5px 15px;
+        border-radius: 20px;
+        font-weight: bold;
+        font-size: 1.2rem;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .nav-buttons {
+        pointer-events: auto;
+        width: 100%;
+        padding: 20px;
+        display: flex;
+        justify-content: space-between;
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+      }
+
+      .nav-btn {
+        background: var(--pocha-orange);
+        border: 3px solid white;
+        color: white;
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        font-size: 24px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+        transition: transform 0.1s;
+      }
+
+      .nav-btn:active {
+        transform: scale(0.9);
+      }
+
+      .nav-btn:disabled {
+        opacity: 0.3;
+        cursor: not-allowed;
+      }
+
+      /* Game World */
+      #game-viewport {
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        position: relative;
+        background: radial-gradient(circle at center, #5d4037 0%, #2d1e1a 100%);
+      }
+
+      #stations-container {
+        display: flex;
+        width: 400%; /* 4 screens */
+        height: 100%;
+        transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+      }
+
+      .station {
+        width: 25%; /* Each takes 100% of viewport */
+        height: 100%;
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        border-right: 2px solid rgba(0, 0, 0, 0.3);
+      }
+
+      .station-title {
+        position: absolute;
+        top: 80px;
+        font-size: 2rem;
+        font-weight: 900;
+        text-shadow: 2px 2px 0 #000;
+        background: rgba(0, 0, 0, 0.5);
+        padding: 5px 20px;
+        border-radius: 10px;
+        z-index: 10;
+      }
+
+      /* Cooking Area */
+      .cookware-area {
+        width: 300px;
+        height: 300px;
+        position: relative;
+        margin-bottom: 20px;
+        cursor: pointer;
+        transition: transform 0.1s;
+      }
+
+      .cookware-area:active {
+        transform: scale(0.98);
+      }
+
+      /* Ingredients Bar */
+      .ingredients-bar {
+        background: rgba(255, 255, 255, 0.9);
+        border-radius: 15px;
+        padding: 10px;
+        display: flex;
+        gap: 10px;
+        box-shadow: 0 -4px 10px rgba(0, 0, 0, 0.2);
+        z-index: 20;
+        margin-bottom: 50px;
+      }
+
+      .ingredient {
+        width: 70px;
+        height: 70px;
+        background: #eee;
+        border: 2px solid #ccc;
+        border-radius: 10px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        font-size: 0.8rem;
+        font-weight: bold;
+        color: #333;
+        position: relative;
+      }
+
+      .ingredient.selected {
+        border: 3px solid var(--pocha-red);
+        background: #ffebee;
+        transform: translateY(-5px);
+      }
+
+      .ingredient img,
+      .ingredient svg {
+        width: 40px;
+        height: 40px;
+        margin-bottom: 2px;
+      }
+
+      /* Progress Bars - HIDDEN FOR HARDCORE MODE */
+      .status-bar-container {
+        display: none !important;
+      }
+
+      /* Modals */
+      .modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.85);
+        z-index: 1000;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        flex-direction: column;
+        text-align: center;
+      }
+
+      .hidden {
+        display: none !important;
+      }
+
+      .modal h1 {
+        font-size: 3rem;
+        color: var(--pocha-orange);
+        margin-bottom: 20px;
+        text-shadow: 3px 3px 0 var(--pocha-red);
+      }
+
+      .modal p {
+        font-size: 1.2rem;
+        margin-bottom: 30px;
+        line-height: 1.6;
+        color: #ddd;
+        max-width: 80%;
+      }
+
+      .btn-start {
+        background: var(--pocha-red);
+        color: white;
+        border: none;
+        padding: 15px 40px;
+        font-size: 1.5rem;
+        border-radius: 50px;
+        cursor: pointer;
+        font-weight: bold;
+        box-shadow: 0 0 15px var(--pocha-red);
+        transition: transform 0.2s;
+      }
+
+      .btn-start:hover {
+        transform: scale(1.1);
+      }
+
+      /* Animations & Effects */
+      @keyframes boil {
+        0% {
+          transform: translateY(0);
+          opacity: 0.5;
+        }
+        50% {
+          transform: translateY(-5px);
+          opacity: 1;
+        }
+        100% {
+          transform: translateY(0);
+          opacity: 0.5;
+        }
+      }
+
+      @keyframes steam {
+        0% {
+          transform: translateY(0) scale(1);
+          opacity: 0;
+        }
+        50% {
+          opacity: 0.5;
+        }
+        100% {
+          transform: translateY(-40px) scale(1.5);
+          opacity: 0;
+        }
+      }
+
+      @keyframes shake {
+        0% {
+          transform: translateX(0);
+        }
+        25% {
+          transform: translateX(-5px);
+        }
+        50% {
+          transform: translateX(5px);
+        }
+        75% {
+          transform: translateX(-5px);
+        }
+        100% {
+          transform: translateX(0);
+        }
+      }
+
+      .bubble {
+        position: absolute;
+        background: rgba(255, 255, 255, 0.8);
+        border-radius: 50%;
+        animation: boil 1s infinite ease-in-out;
+      }
+
+      /* Customer Feedback Bubble */
+      .feedback-bubble {
+        position: absolute;
+        top: 30%;
+        left: 50%;
+        transform: translateX(-50%);
+        background: white;
+        color: #333;
+        padding: 10px 20px;
+        border-radius: 20px;
+        font-weight: bold;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+        font-size: 1.2rem;
+        z-index: 300;
+        animation: popUp 1.5s forwards;
+        pointer-events: none;
+        white-space: nowrap;
+      }
+
+      .feedback-bubble.good {
+        color: #2e7d32;
+        border: 2px solid #2e7d32;
+      }
+      .feedback-bubble.bad {
+        color: #d32f2f;
+        border: 2px solid #d32f2f;
+      } /* Raw */
+      .feedback-bubble.terrible {
+        background: #333;
+        color: white;
+        border: 2px solid black;
+      } /* Burnt */
+
+      @keyframes popUp {
+        0% {
+          opacity: 0;
+          transform: translate(-50%, 20px) scale(0.8);
+        }
+        20% {
+          opacity: 1;
+          transform: translate(-50%, 0) scale(1.1);
+        }
+        100% {
+          opacity: 0;
+          transform: translate(-50%, -50px) scale(1);
+        }
+      }
+
+      .floating-text {
+        position: absolute;
+        font-weight: bold;
+        font-size: 1.5rem;
+        text-shadow: 1px 1px 0 #000;
+        animation: floatUp 1s forwards;
+        pointer-events: none;
+        z-index: 200;
+      }
+
+      @keyframes floatUp {
+        0% {
+          transform: translateY(0);
+          opacity: 1;
+        }
+        100% {
+          transform: translateY(-50px);
+          opacity: 0;
+        }
+      }
+
+      /* SVG Styles */
+      .svg-pot {
+        filter: drop-shadow(0 5px 5px rgba(0, 0, 0, 0.5));
+      }
+      .food-item {
+        transition: opacity 0.3s;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Start Screen -->
+    <div id="start-screen" class="modal">
+      <h1>
+        곱춘이의 포장마차<br /><span style="font-size: 0.6em; color: #ff5252"
+          >(HARDCORE)</span
+        >
+      </h1>
+      <p>
+        오늘의 목표 매출: <strong>10,000원</strong><br />
+        제한 시간: <strong>90초</strong><br /><br />
+        [경고: 난이도 상향]<br />
+        1. <strong>게이지 바가 없습니다.</strong> 눈으로 익힘 정도를
+        확인하세요!<br />
+        2. 덜 익었을 때도 서빙 가능하지만, <strong>500원</strong>만 받습니다.<br />
+        3. 음식이 맛있게 익은 시간은 <strong>단 3초</strong>입니다.<br />
+        4. 3초가 지나면 음식이 타버립니다.<br />
+      </p>
+      <button class="btn-start" onclick="game.start()">장사 시작!</button>
+    </div>
+
+    <!-- Game Over Screen -->
+    <div id="end-screen" class="modal hidden">
+      <h1 id="end-title">영업 종료</h1>
+      <p id="end-message">정산 중...</p>
+      <button class="btn-start" onclick="location.reload()">다시 하기</button>
+    </div>
+
+    <!-- UI Layer -->
+    <div id="ui-layer">
+      <div class="top-bar">
+        <div class="stat-box">💰 <span id="score-display">0</span>원</div>
+        <div class="stat-box">⏰ <span id="time-display">90</span>초</div>
+      </div>
+
+      <div class="nav-buttons">
+        <button class="nav-btn" id="btn-left" onclick="game.moveView(-1)">
+          ◀
+        </button>
+        <button class="nav-btn" id="btn-right" onclick="game.moveView(1)">
+          ▶
+        </button>
+      </div>
+    </div>
+
+    <!-- Game World -->
+    <div id="game-viewport">
+      <div id="stations-container">
+        <!-- Station 1: Ramyeon -->
+        <div class="station" id="station-0">
+          <div class="station-title">🍜 라면</div>
+          <div class="cookware-area" onclick="game.handleStationClick(0)">
+            <!-- Dynamic SVG Content inserted here -->
+            <div id="render-0"></div>
+          </div>
+          <div class="ingredients-bar" id="ing-bar-0"></div>
+        </div>
+
+        <!-- Station 2: Tteokbokki -->
+        <div class="station" id="station-1">
+          <div class="station-title">🌶️ 떡볶이</div>
+          <div class="cookware-area" onclick="game.handleStationClick(1)">
+            <div id="render-1"></div>
+          </div>
+          <div class="ingredients-bar" id="ing-bar-1"></div>
+        </div>
+
+        <!-- Station 3: Tempura -->
+        <div class="station" id="station-2">
+          <div class="station-title">🍤 튀김</div>
+          <div class="cookware-area" onclick="game.handleStationClick(2)">
+            <div id="render-2"></div>
+          </div>
+          <div class="ingredients-bar" id="ing-bar-2"></div>
+        </div>
+
+        <!-- Station 4: Sundae -->
+        <div class="station" id="station-3">
+          <div class="station-title">🩸 순대</div>
+          <div class="cookware-area" onclick="game.handleStationClick(3)">
+            <div id="render-3"></div>
+          </div>
+          <div class="ingredients-bar" id="ing-bar-3"></div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // --- Game Data & Logic ---
+
+      const RECIPES = {
+        0: {
+          // Ramyeon
+          name: "라면",
+          steps: ["water", "noodles", "garnish"],
+          cookTime: 5000,
+          burnTime: 3000, // Reduced to 3s window
+          price: 1000,
+          ingredients: [
+            { id: "water", name: "물", icon: "💧" },
+            { id: "noodles", name: "면/스프", icon: "🍜" },
+            { id: "garnish", name: "파/계란", icon: "🥚" },
+          ],
+        },
+        1: {
+          // Tteokbokki
+          name: "떡볶이",
+          steps: ["sauce", "ricecake", "fishcake"],
+          cookTime: 6000,
+          burnTime: 3000, // Reduced to 3s window
+          price: 1000,
+          ingredients: [
+            { id: "sauce", name: "육수/장", icon: "🌶️" },
+            { id: "ricecake", name: "떡", icon: "🍡" },
+            { id: "fishcake", name: "오뎅/파", icon: "🍥" },
+          ],
+        },
+        2: {
+          // Tempura
+          name: "튀김",
+          steps: ["oil", "raw_shrimp"],
+          cookTime: 4000,
+          burnTime: 3000, // Reduced to 3s window
+          price: 800,
+          ingredients: [
+            { id: "oil", name: "식용유", icon: "🛢️" },
+            { id: "raw_shrimp", name: "생새우", icon: "🦐" },
+          ],
+        },
+        3: {
+          // Sundae
+          name: "순대",
+          steps: ["steam_water", "raw_sundae"],
+          cookTime: 7000,
+          burnTime: 3000, // Reduced to 3s window
+          price: 1200,
+          needsCutting: true,
+          ingredients: [
+            { id: "steam_water", name: "찜기물", icon: "💧" },
+            { id: "raw_sundae", name: "생순대", icon: "⚫" },
+          ],
+        },
+      };
+
+      const FEEDBACK = {
+        good: ["맛있네요!", "최고!", "👍", "국물이 끝내줘요", "바로 이거지!"],
+        bad: [
+          "차가워요..",
+          "안 익었잖아!",
+          "🤢",
+          "이걸 먹으라고?",
+          "배 아플듯..",
+        ],
+        terrible: ["탔잖아요!", "장난해요?", "🤬", "환불해줘요!", "사장님!!!"],
+      };
+
+      class Game {
+        constructor() {
+          this.score = 0;
+          this.targetScore = 10000;
+          this.time = 90;
+          this.currentStation = 0;
+          this.isPlaying = false;
+          this.selectedIngredient = null;
+          this.timerInterval = null;
+          this.cookInterval = null;
+
+          // Initialize Stations State
+          this.stations = [
+            { id: 0, state: "empty", stepsDone: [], progress: 0, cuts: 0 }, // Ramyeon
+            { id: 1, state: "empty", stepsDone: [], progress: 0, cuts: 0 }, // Tteok
+            { id: 2, state: "empty", stepsDone: [], progress: 0, cuts: 0 }, // Tempura
+            { id: 3, state: "empty", stepsDone: [], progress: 0, cuts: 0 }, // Sundae
+          ];
+
+          this.initUI();
+          this.renderAllStations();
+        }
+
+        initUI() {
+          // Render Ingredient Bars
+          for (let i = 0; i < 4; i++) {
+            const container = document.getElementById(`ing-bar-${i}`);
+            RECIPES[i].ingredients.forEach((ing) => {
+              const el = document.createElement("div");
+              el.className = "ingredient";
+              el.innerHTML = `<div>${ing.icon}</div><div>${ing.name}</div>`;
+              el.onclick = (e) => {
+                e.stopPropagation();
+                this.selectIngredient(i, ing.id, el);
+              };
+              container.appendChild(el);
+            });
+          }
+          this.updateNavButtons();
+        }
+
+        start() {
+          document.getElementById("start-screen").classList.add("hidden");
+          this.isPlaying = true;
+          this.score = 0;
+          this.updateScore(0);
+          this.startTimer();
+          this.startCookingLoop();
+        }
+
+        startTimer() {
+          this.timerInterval = setInterval(() => {
+            this.time--;
+            document.getElementById("time-display").innerText = this.time;
+            if (this.time <= 0) this.endGame(false);
+          }, 1000);
+        }
+
+        startCookingLoop() {
+          // Updates cooking progress every 100ms
+          this.cookInterval = setInterval(() => {
+            this.stations.forEach((station) => {
+              const recipe = RECIPES[station.id];
+
+              if (station.state === "cooking") {
+                station.progress += 100;
+
+                // Check if cooked
+                if (
+                  station.progress >= recipe.cookTime &&
+                  station.progress < recipe.cookTime + 100
+                ) {
+                  // Visual Change trigger
+                  station.state = "cooked";
+                  if (recipe.needsCutting) station.state = "needs_cut";
+                  this.renderStation(station.id);
+                }
+              } else if (
+                station.state === "cooked" ||
+                station.state === "needs_cut"
+              ) {
+                station.progress += 100;
+                // Check if burning (Cook time + Burn time)
+                if (station.progress >= recipe.cookTime + recipe.burnTime) {
+                  station.state = "burned";
+                  this.renderStation(station.id);
+                }
+              }
+            });
+          }, 100);
+        }
+
+        moveView(direction) {
+          const newIndex = this.currentStation + direction;
+          if (newIndex >= 0 && newIndex < 4) {
+            this.currentStation = newIndex;
+            document.getElementById(
+              "stations-container"
+            ).style.transform = `translateX(-${this.currentStation * 25}%)`;
+            this.updateNavButtons();
+            this.selectedIngredient = null; // Clear selection on move
+            document
+              .querySelectorAll(".ingredient.selected")
+              .forEach((el) => el.classList.remove("selected"));
+          }
+        }
+
+        updateNavButtons() {
+          document.getElementById("btn-left").disabled =
+            this.currentStation === 0;
+          document.getElementById("btn-right").disabled =
+            this.currentStation === 3;
+        }
+
+        selectIngredient(stationId, ingId, el) {
+          if (this.currentStation !== stationId) return; // Can only pick from current view
+
+          // Toggle selection
+          if (this.selectedIngredient === ingId) {
+            this.selectedIngredient = null;
+            el.classList.remove("selected");
+          } else {
+            document
+              .querySelectorAll(".ingredient.selected")
+              .forEach((e) => e.classList.remove("selected"));
+            this.selectedIngredient = ingId;
+            el.classList.add("selected");
+          }
+        }
+
+        handleStationClick(stationId) {
+          if (!this.isPlaying) return;
+          const station = this.stations[stationId];
+          const recipe = RECIPES[stationId];
+
+          // 1. Handle Burned - Click to Trash
+          if (station.state === "burned") {
+            this.showFloatingText("🗑️ -500원", stationId, "red");
+            this.showFeedback(stationId, "terrible");
+            this.updateScore(-500);
+            this.resetStation(stationId);
+            return;
+          }
+
+          // 2. Handle Serving Logic
+
+          // Case A: Undercooked (Cooking state)
+          // Note: You can serve raw food instantly if ingredients are in, but usually it's 'cooking' state.
+          // However, if it's just 'preparing', we shouldn't be able to serve. Only once it starts 'cooking'.
+          if (station.state === "cooking") {
+            // Serve Undercooked
+            this.showFloatingText(`💰 +500원`, stationId, "#aaa");
+            this.showFeedback(stationId, "bad");
+            this.updateScore(500); // Fixed low price
+            this.resetStation(stationId);
+            return;
+          }
+
+          // Case B: Perfect Cooked
+          if (station.state === "cooked") {
+            this.showFloatingText(`💰 +${recipe.price}원`, stationId);
+            this.showFeedback(stationId, "good");
+            this.updateScore(recipe.price);
+            this.resetStation(stationId);
+            return;
+          }
+
+          // 3. Handle Cutting (Sundae Minigame)
+          if (station.state === "needs_cut") {
+            station.cuts++;
+            // Animation effect
+            const el = document.getElementById(`render-${stationId}`);
+            el.style.transform = "scale(0.9)";
+            setTimeout(() => (el.style.transform = "scale(1)"), 100);
+
+            if (station.cuts >= 3) {
+              station.state = "cooked";
+            }
+            this.renderStation(stationId);
+            return;
+          }
+
+          // 4. Handle Adding Ingredients
+          if (this.selectedIngredient) {
+            const stepIndex = recipe.steps.indexOf(this.selectedIngredient);
+            const currentStepIndex = station.stepsDone.length;
+
+            if (stepIndex === currentStepIndex) {
+              // Correct ingredient
+              station.stepsDone.push(this.selectedIngredient);
+              this.showFloatingText("재료 추가!", stationId);
+
+              // Check if preparation is complete
+              if (station.stepsDone.length === recipe.steps.length) {
+                station.state = "cooking";
+                station.progress = 0;
+              } else {
+                station.state = "preparing";
+              }
+
+              // Deselect
+              this.selectedIngredient = null;
+              document
+                .querySelectorAll(".ingredient.selected")
+                .forEach((el) => el.classList.remove("selected"));
+              this.renderStation(stationId);
+            } else {
+              // Wrong ingredient order or wrong station
+              this.showFloatingText("순서가 틀렸어요!", stationId, "orange");
+              // Penalty Shake
+              const container = document.getElementById(`station-${stationId}`);
+              container.style.animation = "shake 0.3s";
+              setTimeout(() => (container.style.animation = ""), 300);
+            }
+          }
+        }
+
+        resetStation(id) {
+          this.stations[id] = {
+            id: id,
+            state: "empty",
+            stepsDone: [],
+            progress: 0,
+            cuts: 0,
+          };
+          this.renderStation(id);
+        }
+
+        updateScore(amount) {
+          this.score += amount;
+          document.getElementById("score-display").innerText =
+            this.score.toLocaleString();
+        }
+
+        showFloatingText(text, stationId, color = "gold") {
+          const stationEl = document.getElementById(`station-${stationId}`);
+          const el = document.createElement("div");
+          el.className = "floating-text";
+          el.innerText = text;
+          el.style.color = color;
+          el.style.left = "50%";
+          el.style.top = "40%";
+          el.style.transform = "translateX(-50%)";
+          stationEl.appendChild(el);
+          setTimeout(() => el.remove(), 1000);
+        }
+
+        showFeedback(stationId, type) {
+          const msgs = FEEDBACK[type];
+          const msg = msgs[Math.floor(Math.random() * msgs.length)];
+
+          const stationEl = document.getElementById(`station-${stationId}`);
+          const el = document.createElement("div");
+          el.className = `feedback-bubble ${type}`;
+          el.innerText = msg;
+          stationEl.appendChild(el);
+          setTimeout(() => el.remove(), 1500);
+        }
+
+        endGame(won) {
+          this.isPlaying = false;
+          clearInterval(this.timerInterval);
+          clearInterval(this.cookInterval);
+          const endScreen = document.getElementById("end-screen");
+          const endTitle = document.getElementById("end-title");
+          const endMsg = document.getElementById("end-message");
+
+          endScreen.classList.remove("hidden");
+          if (this.score >= this.targetScore) {
+            endTitle.innerText = "영업 대성공! 🎉";
+            endTitle.style.color = "#4CAF50";
+          } else {
+            endTitle.innerText = "영업 실패 😭";
+            endTitle.style.color = "#F44336";
+          }
+          endMsg.innerHTML = `최종 매출: ${this.score.toLocaleString()}원<br>목표 매출: ${this.targetScore.toLocaleString()}원`;
+        }
+
+        // --- SVG Rendering System ---
+        renderAllStations() {
+          this.stations.forEach((s) => this.renderStation(s.id));
+        }
+
+        renderStation(id) {
+          const container = document.getElementById(`render-${id}`);
+          const station = this.stations[id];
+          let svgContent = "";
+
+          // Base Pot/Pan logic
+          if (id === 0) svgContent = this.getRamyeonSVG(station);
+          if (id === 1) svgContent = this.getTteokSVG(station);
+          if (id === 2) svgContent = this.getTempuraSVG(station);
+          if (id === 3) svgContent = this.getSundaeSVG(station);
+
+          container.innerHTML = svgContent;
+        }
+
+        // SVG Generators - Visual changes needed to indicate doneness without bars
+        getRamyeonSVG(s) {
+          const hasWater = s.stepsDone.includes("water");
+          const hasNoodles = s.stepsDone.includes("noodles");
+          const hasGarnish = s.stepsDone.includes("garnish");
+          const isBurned = s.state === "burned";
+          const isCooked = s.state === "cooked";
+
+          let content = "";
+          // Pot
+          content += `<circle cx="150" cy="150" r="100" fill="#DAA520" stroke="#B8860B" stroke-width="5" />`;
+          content += `<rect x="20" y="140" width="30" height="20" fill="#333" />`;
+          content += `<rect x="250" y="140" width="30" height="20" fill="#333" />`;
+
+          if (isBurned) {
+            content += `<circle cx="150" cy="150" r="90" fill="#222" />`;
+            content += `<text x="150" y="160" text-anchor="middle" fill="white" font-size="40">🔥</text>`;
+            return `<svg viewBox="0 0 300 300" class="svg-pot">${content}</svg>`;
+          }
+
+          // Water/Soup
+          if (hasWater) {
+            let color = hasNoodles ? "#D93025" : "#87CEEB";
+            if (isCooked) color = "#B71C1C"; // Darker red when cooked
+
+            content += `<circle cx="150" cy="150" r="90" fill="${color}" opacity="0.8" />`;
+            if (s.state === "cooking") {
+              // Boiling bubbles (Fast)
+              content += `<circle cx="120" cy="120" r="10" fill="white" opacity="0.5"><animate attributeName="cy" values="120;110;120" dur="0.5s" repeatCount="indefinite"/></circle>`;
+              content += `<circle cx="180" cy="160" r="8" fill="white" opacity="0.5"><animate attributeName="cy" values="160;150;160" dur="0.6s" repeatCount="indefinite"/></circle>`;
+            }
+            if (isCooked) {
+              // Steam (Done indicator)
+              content += `<path d="M120,100 Q130,50 140,100" stroke="white" stroke-width="3" fill="none" opacity="0.6"><animate attributeName="d" values="M120,100 Q130,50 140,100; M120,90 Q140,40 140,90" dur="2s" repeatCount="indefinite"/></path>`;
+              content += `<path d="M160,100 Q170,50 180,100" stroke="white" stroke-width="3" fill="none" opacity="0.6"><animate attributeName="d" values="M160,100 Q170,50 180,100; M160,90 Q180,40 180,90" dur="2s" repeatCount="indefinite" begin="0.5s"/></path>`;
+            }
+          }
+          // Noodles
+          if (hasNoodles) {
+            let noodleColor = isCooked ? "#FFD54F" : "#F4D03F";
+            content += `<path d="M100,150 Q120,120 140,150 T180,150 T220,150" fill="none" stroke="${noodleColor}" stroke-width="8" />`;
+            content += `<path d="M110,170 Q130,140 150,170 T190,170" fill="none" stroke="${noodleColor}" stroke-width="8" />`;
+          }
+          // Garnish
+          if (hasGarnish) {
+            content += `<circle cx="150" cy="150" r="15" fill="white" />`;
+            content += `<circle cx="150" cy="150" r="8" fill="orange" />`;
+            content += `<rect x="120" y="130" width="10" height="5" fill="green" transform="rotate(45 125 132)" />`;
+            content += `<rect x="170" y="160" width="10" height="5" fill="green" transform="rotate(-45 175 162)" />`;
+          }
+
+          return `<svg viewBox="0 0 300 300" class="svg-pot">${content}</svg>`;
+        }
+
+        getTteokSVG(s) {
+          const hasSauce = s.stepsDone.includes("sauce");
+          const hasTteok = s.stepsDone.includes("ricecake");
+          const hasFish = s.stepsDone.includes("fishcake");
+          const isBurned = s.state === "burned";
+          const isCooked = s.state === "cooked";
+
+          let content = "";
+          // Pan
+          content += `<rect x="20" y="50" width="260" height="200" rx="20" fill="#333" stroke="#111" stroke-width="5" />`;
+
+          if (isBurned) {
+            content += `<rect x="30" y="60" width="240" height="180" rx="15" fill="#111" />`;
+            content += `<text x="150" y="160" text-anchor="middle" fill="white" font-size="40">🔥</text>`;
+            return `<svg viewBox="0 0 300 300" class="svg-pot">${content}</svg>`;
+          }
+
+          if (hasSauce) {
+            let sauceColor = isCooked ? "#8E0000" : "#B71C1C"; // Darker when cooked
+            content += `<rect x="30" y="60" width="240" height="180" rx="15" fill="${sauceColor}" opacity="0.9" />`;
+            if (s.state === "cooking") {
+              content += `<circle cx="100" cy="100" r="15" fill="#D32F2F" opacity="0.5"><animate attributeName="r" values="10;20;10" dur="2s" repeatCount="indefinite"/></circle>`;
+            }
+            if (isCooked) {
+              // Steam
+              content += `<path d="M150,100 L150,60" stroke="white" stroke-width="4" stroke-dasharray="10,5" opacity="0.7" />`;
+            }
+          }
+          if (hasTteok) {
+            for (let i = 0; i < 5; i++) {
+              content += `<rect x="${
+                60 + i * 40
+              }" y="100" width="30" height="80" rx="10" fill="white" transform="rotate(${
+                i * 10
+              } ${75 + i * 40} 140)" />`;
+            }
+          }
+          if (hasFish) {
+            content += `<path d="M50,80 L80,110 L50,140 Z" fill="#FFCC80" />`;
+            content += `<path d="M220,180 L250,210 L220,240 Z" fill="#FFCC80" />`;
+          }
+
+          return `<svg viewBox="0 0 300 300" class="svg-pot">${content}</svg>`;
+        }
+
+        getTempuraSVG(s) {
+          const hasOil = s.stepsDone.includes("oil");
+          const hasShrimp = s.stepsDone.includes("raw_shrimp");
+          const isBurned = s.state === "burned";
+          const isCooked = s.state === "cooked";
+
+          let content = "";
+          // Fryer
+          content += `<rect x="40" y="80" width="220" height="160" fill="#BDC3C7" stroke="#7F8C8D" stroke-width="5" />`;
+
+          if (isBurned) {
+            content += `<rect x="50" y="90" width="200" height="140" fill="#222" />`;
+            return `<svg viewBox="0 0 300 300" class="svg-pot">${content}</svg>`;
+          }
+
+          if (hasOil) {
+            content += `<rect x="50" y="100" width="200" height="130" fill="#FFEB3B" opacity="0.6" />`;
+            if (s.state === "cooking") {
+              // Fast Oil bubbles
+              content += `<circle cx="80" cy="140" r="5" fill="white" opacity="0.4"><animate attributeName="cy" values="140;100" dur="0.3s" repeatCount="indefinite"/></circle>`;
+              content += `<circle cx="180" cy="180" r="5" fill="white" opacity="0.4"><animate attributeName="cy" values="180;140" dur="0.4s" repeatCount="indefinite"/></circle>`;
+            }
+          }
+          if (hasShrimp) {
+            // Grey (Raw) -> Gold (Cooked)
+            const shrimpColor = isCooked ? "#FFA000" : "#B0BEC5";
+
+            content += `<path d="M100,150 Q120,120 140,150 L130,180 Q110,150 100,150" fill="${shrimpColor}" stroke="#D84315" stroke-width="2"/>`;
+            content += `<path d="M160,140 Q180,110 200,140 L190,170 Q170,140 160,140" fill="${shrimpColor}" stroke="#D84315" stroke-width="2"/>`;
+
+            if (isCooked) {
+              // Sparkle
+              content += `<text x="140" y="120" font-size="20" fill="gold">✨</text>`;
+            }
+          }
+
+          return `<svg viewBox="0 0 300 300" class="svg-pot">${content}</svg>`;
+        }
+
+        getSundaeSVG(s) {
+          const hasWater = s.stepsDone.includes("steam_water");
+          const hasSundae = s.stepsDone.includes("raw_sundae");
+          const isBurned = s.state === "burned";
+          const needsCut = s.state === "needs_cut";
+          const isCooked = s.state === "cooked";
+
+          let content = "";
+          // Steamer
+          content += `<ellipse cx="150" cy="220" rx="120" ry="40" fill="#B0BEC5" />`;
+          content += `<rect x="30" y="100" width="240" height="120" fill="#CFD8DC" />`;
+          content += `<ellipse cx="150" cy="100" rx="120" ry="40" fill="#ECEFF1" stroke="#B0BEC5" stroke-width="2"/>`;
+
+          if (hasWater && (s.state === "cooking" || needsCut || isCooked)) {
+            content += `<text x="150" y="250" font-size="20" text-anchor="middle">♨️</text>`;
+          }
+
+          if (hasSundae) {
+            if (isBurned) {
+              content += `<path d="M60,100 Q150,150 240,100 Q150,50 60,100" fill="#111" />`;
+            } else {
+              // Sausage color change: Pale brown -> Dark brown
+              const color = needsCut || isCooked ? "#3E2723" : "#8D6E63";
+              content += `<path d="M70,100 Q150,160 230,100 Q150,40 70,100" fill="none" stroke="${color}" stroke-width="40" stroke-linecap="round" />`;
+
+              if (needsCut) {
+                // Flashing cut indicator (Visual cue for player)
+                content += `<circle cx="150" cy="100" r="5" fill="red"><animate attributeName="opacity" values="0;1;0" dur="0.5s" repeatCount="indefinite"/></circle>`;
+
+                if (s.cuts >= 1)
+                  content += `<line x1="120" y1="60" x2="120" y2="140" stroke="white" stroke-width="2" stroke-dasharray="5,5" />`;
+                if (s.cuts >= 2)
+                  content += `<line x1="150" y1="60" x2="150" y2="140" stroke="white" stroke-width="2" stroke-dasharray="5,5" />`;
+                if (s.cuts >= 3)
+                  content += `<line x1="180" y1="60" x2="180" y2="140" stroke="white" stroke-width="2" stroke-dasharray="5,5" />`;
+              }
+
+              if (isCooked && !needsCut) {
+                content += `<circle cx="100" cy="100" r="15" fill="${color}" stroke="white" />`;
+                content += `<circle cx="140" cy="110" r="15" fill="${color}" stroke="white" />`;
+                content += `<circle cx="180" cy="100" r="15" fill="${color}" stroke="white" />`;
+              }
+            }
+          }
+
+          return `<svg viewBox="0 0 300 300" class="svg-pot">${content}</svg>`;
+        }
+      }
+
+      // Init
+      const game = new Game();
+    </script>
+  </body>
+</html>
